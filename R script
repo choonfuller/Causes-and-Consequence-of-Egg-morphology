@@ -1,0 +1,1625 @@
+# directory
+setwd("D:/Common Terns/Choon")
+
+# packages
+library(lme4)
+library(lmerTest)
+library(aod)
+library(effects)
+library(multcomp)
+library(rptR)
+library(ggplot2)
+library(dplyr)
+library(plyr)
+library(gtools)
+library(psych)
+library(ggsignif)
+
+# METHOD VALIDATION -------------------------------------------------------
+
+# repeatability between egg pictures
+choon=read.csv("egg.csv", header = T)
+andrea=read.csv("andreas_data.csv", header=T)
+jas=read.csv("jasmines_data.csv", header=T)
+choon$name="choon"
+andrea$name="andrea"
+jas$name="jasmine"
+
+#repeatability between images of the same egg
+
+choon$date = as.factor(substr((as.character(choon$slice)), 1, 10))
+choon$egg_id = as.factor(paste(choon$nest_nr, choon$egg_nr, sep="_"))
+choon$picture_id = as.factor(paste(choon$date, choon$egg_id, sep="_"))
+
+#spottiness
+rep_spot= rpt(spotiness ~ (1 | picture_id), grname = "picture_id"
+              , data = choon, nboot = 1000, npermut = 1000)
+
+rep_spot
+summary(rep_spot)
+
+#spot hue
+rep_H_spot= rpt(H_spot ~ (1 | picture_id), grname = "picture_id"
+                , data = choon, nboot = 1000, npermut = 1000)
+rep_H_spot
+summary(rep_H_spot)
+
+#shell hue
+rep_H_shell= rpt(H_shell ~ (1 | picture_id), grname = "picture_id"
+                 , data = choon, nboot = 1000, npermut = 1000)
+rep_H_shell
+summary(rep_H_shell)
+
+#spot saturation
+rep_S_spot= rpt(S_spot ~ (1 | picture_id), grname = "picture_id"
+                , data = choon, nboot = 1000, npermut = 1000) # it can take time...
+
+rep_S_spot
+summary(rep_S_spot)
+
+#shell sat
+rep_S_shell= rpt(S_shell ~ (1 | picture_id), grname = "picture_id"
+                 , data = choon, nboot = 1000, npermut = 1000)
+rep_S_shell
+summary(rep_S_shell)
+
+#spot value
+rep_V_spot= rpt(V_spot ~ (1 | picture_id), grname = "picture_id"
+                , data = choon, nboot = 1000, npermut = 1000) # it can take time...
+rep_V_spot
+summary(rep_V_spot)
+
+#shell value
+rep_V_shell= rpt(V_shell ~ (1 | picture_id), grname = "picture_id"
+                 , data = choon, nboot = 1000, npermut = 1000)
+rep_V_shell
+summary(rep_V_shell)
+
+
+#repeatability between 3 observers analysing the same data 
+choon$egg_nr=as.factor(choon$egg_nr)
+jas$egg_nr=as.factor(jas$egg_nr)
+andrea$egg_nr=as.factor(andrea$egg_nr)
+#remove extra columns jasmine and andrea had
+jas=jas[,-c(1,27:29)]
+andrea=andrea[,-24]
+
+#bind
+all=smartbind(choon, andrea)
+all=smartbind(all, jas)
+all$name=as.factor(all$name) #115 obs
+
+#spottiness
+rep_spot= rpt(spotiness ~ (1 | slice), grname = "slice"
+              , data = all, nboot = 1000, npermut = 1000)
+rep_spot
+summary(rep_spot) 
+
+#spot hue
+rep_H_spot= rpt(H_spot ~ (1 | slice), grname = "slice"
+                , data = all, nboot = 1000, npermut = 1000)
+rep_H_spot
+summary(rep_H_spot) 
+
+#shell hue
+rep_H_shell= rpt(H_shell ~ (1 | slice), grname = "slice"
+                 , data = all, nboot = 1000, npermut = 1000)
+rep_H_shell
+summary(rep_H_shell) 
+
+#spot sat
+rep_S_spot= rpt(S_spot ~ (1 | slice), grname = "slice"
+                , data = all, nboot = 1000, npermut = 1000) # it can take time...
+
+rep_S_spot
+summary(rep_S_spot) 
+
+#shell sat
+rep_S_shell= rpt(S_shell ~ (1 | slice), grname = "slice"
+                 , data = all, nboot = 1000, npermut = 1000)
+rep_S_shell
+summary(rep_S_shell) 
+
+#shell value
+rep_V_shell= rpt(V_shell ~ (1 | slice), grname = "slice"
+                 , data = all, nboot = 1000, npermut = 1000)
+rep_V_shell
+summary(rep_V_shell)
+
+#spot value
+rep_V_spot= rpt(V_spot ~ (1 | slice), grname = "slice"
+                , data = all, nboot = 1000, npermut = 1000)
+rep_V_spot
+summary(rep_V_spot)
+
+
+
+#### EGG CHARACTERISTICS AS EXNTENDED PHENOTYPE ####
+
+egg = read.table("egg_indexes_ALL_FINAL.csv",h=T,sep=",") # N = 855
+head(egg)
+summary(egg)
+
+# egg number
+# change o1, o2, o3 to 1, 2, and 3
+egg$egg_nr=egg$egg
+egg$egg_nr=ifelse(egg$egg=="o1", 1, egg$egg_nr)
+egg$egg_nr=ifelse(egg$egg=="o2", 2, egg$egg_nr)
+egg$egg_nr=ifelse(egg$egg=="o3", 3, egg$egg_nr)
+egg$egg_nr = as.factor(egg$egg_nr)
+
+# nest id
+egg$nest_id = as.factor(paste(egg$nest_new, egg$year, sep="_"))
+egg$nest = egg$nest_new
+
+# get egg volume
+egg$volume=0.000476*(egg$maxbreadth^2)*egg$maxlength
+
+### FEMALE DATA
+#all adults
+fem = read.table("adults_info_1718.csv",h=T,sep=",") # N = 2457
+head(fem)
+summary(fem)
+
+# only females
+fem=subset(fem, fem$sex=="2") # N = 1141
+summary(fem)
+
+# reduce data for female caracteristics
+names(fem)
+fem = fem[,c(3,7,8,10,14,15,16,17,18)]
+fem=unique(fem)
+
+
+# merge fem and egg
+adegg=merge(fem, egg, by=c("nest", "year"), all.x=F, all.y=T) # N = 855
+summary(adegg)
+
+# reduce to only 1st clutches
+adegg = subset(adegg, adegg$brood_type==1) # N = 700
+
+# variables
+summary(adegg)
+adegg$year=as.factor(adegg$year)
+adegg$egg_nr=as.factor(adegg$egg_nr)
+adegg$nest_id=as.factor(adegg$nest_id)
+
+#### repeatability within nest ####
+summary(rpt(spotiness~(1|nest_id), grname="nest_id", data=adegg, nboot=1000, npermut = 1000))
+
+summary(rpt(Elongation~(1|nest_id), grname="nest_id", data=adegg, nboot=1000, npermut = 1000))
+
+summary(rpt(PolarAsymmetry~(1|nest_id), grname="nest_id", data=adegg, nboot=1000, npermut = 1000))
+
+summary(rpt(Pointedness~(1|nest_id), grname="nest_id", data=adegg, nboot=1000, npermut = 1000))
+
+summary(rpt(volume~(1|nest_id), grname="nest_id", data=adegg, nboot=1000, npermut = 1000))
+
+summary(rpt(contrast~(1|nest_id), grname="nest_id", data=adegg, nboot=1000, npermut = 1000))
+
+summary(rpt(H_shell~(1|nest_id), grname="nest_id", data=adegg, nboot=1000, npermut = 1000))
+
+summary(rpt(H_spot~(1|nest_id), grname="nest_id", data=adegg, nboot=1000, npermut = 1000))
+
+summary(rpt(S_shell~(1|nest_id), grname="nest_id", data=adegg, nboot=1000, npermut = 1000))
+
+summary(rpt(S_spot~(1|nest_id), grname="nest_id", data=adegg, nboot=1000, npermut = 1000))
+
+summary(rpt(V_shell~(1|nest_id), grname="nest_id", data=adegg, nboot=1000, npermut = 1000))
+
+summary(rpt(V_spot~(1|nest_id), grname="nest_id", data=adegg, nboot=1000, npermut = 1000))
+
+#repeatability between 2017 and 2018 
+y17=subset(fem, year=="2017")
+y18=subset(fem, year=="2018")
+name18=y18[,1:2]
+name17=y17[,1:2]
+c=merge(name17, name18, by="name", all.x = F, all.y=F)
+c=unique(c)
+a=merge(c, fem, by="name", all.x=T, all.y=F)
+a=a[,-c(2:3)]
+
+# merge fem and egg
+adegg=merge(a, egg, by=c("nest", "year"), all.x=F, all.y=T) # N = 855
+summary(adegg)
+
+# for this analysis only 1st clucthes
+adegg = subset(adegg, adegg$brood_type==1) # N = 700
+
+# variables
+summary(adegg)
+adegg$year=as.factor(adegg$year)
+adegg$egg_nr=as.factor(adegg$egg_nr)
+adegg$nest_id=as.factor(adegg$nest_id)
+
+summary(rpt(spotiness~(1|name), grname="name", data=adegg, nboot=1000, npermut=1000))
+
+summary(rpt(volume~(1|name), grname="name", data=adegg, npermut = 1000, nboot=1000))
+
+summary(rpt(Elongation~(1|name), grname="name", data=adegg, nboot=1000, npermut=1000))
+
+summary(rpt(Pointedness~(1|name), grname="name", data=adegg, nboot=1000, npermut=1000))
+
+summary(rpt(PolarAsymmetry~(1|name), grname="name", data=adegg, nboot=1000, npermut=1000))
+
+summary(rpt(contrast~(1|name), grname="name", data=adegg, nboot=1000, npermut=1000))
+
+summary(rpt(H_spot~(1|name), grname="name", data=adegg, nboot=1000, npermut=1000))
+
+summary(rpt(H_shell~(1|name), grname="name", data=adegg, nboot=1000, npermut=1000))
+
+summary(rpt(S_spot~(1|name), grname="name", data=adegg, nboot=1000, npermut=1000))
+
+summary(rpt(S_shell~(1|name), grname="name", data=adegg, nboot=1000, npermut=1000))
+
+summary(rpt(V_spot~(1|name), grname="name", data=adegg, nboot=1000, npermut=1000))
+
+summary(rpt(V_shell~(1|name), grname="name", data=adegg, nboot=1000, npermut=1000))
+
+
+### DATA EXPLORATION
+#get the full dataset back 
+egg = read.table("egg_indexes_ALL_FINAL.csv",h=T,sep=",") # N = 855
+head(egg)
+summary(egg)
+
+# egg number
+# change o1, o2, o3 to 1, 2, and 3
+egg$egg_nr=egg$egg
+egg$egg_nr=ifelse(egg$egg=="o1", 1, egg$egg_nr)
+egg$egg_nr=ifelse(egg$egg=="o2", 2, egg$egg_nr)
+egg$egg_nr=ifelse(egg$egg=="o3", 3, egg$egg_nr)
+egg$egg_nr = as.factor(egg$egg_nr)
+
+# nest id
+egg$nest_id = as.factor(paste(egg$nest_new, egg$year, sep="_"))
+egg$nest = egg$nest_new
+
+# get egg volume
+egg$volume=0.000476*(egg$maxbreadth^2)*egg$maxlength
+
+### FEMALE DATA
+#all adults
+fem = read.table("adults_info_1718.csv",h=T,sep=",") # N = 2457
+head(fem)
+summary(fem)
+
+# only females
+fem=subset(fem, fem$sex=="2") # N = 1141
+summary(fem)
+
+# reduce data for female caracteristics
+names(fem)
+fem = fem[,c(3,7,8,10,14,15,16,17,18)]
+fem=unique(fem)
+
+
+# merge fem and egg
+adegg=merge(fem, egg, by=c("nest", "year"), all.x=F, all.y=T) # N = 855
+summary(adegg)
+
+# reduce to only 1st clutches
+adegg = subset(adegg, adegg$brood_type==1) # N = 700
+
+# variables
+summary(adegg)
+adegg$year=as.factor(adegg$year)
+adegg$egg_nr=as.factor(adegg$egg_nr)
+adegg$nest_id=as.factor(adegg$nest_id)
+
+
+## distribution
+
+hist(adegg$spotiness)
+hist(adegg$H_shell)
+hist(adegg$S_shell)
+hist(adegg$V_shell)
+hist(adegg$H_spot)
+hist(adegg$S_spot)
+hist(adegg$V_spot)
+
+hist(adegg$age)
+table(adegg$year)
+table(adegg$egg_nr)
+hist(adegg$laying_date)
+hist(adegg$arrival_mass3d)
+
+## correlations
+
+plot(adegg$age, adegg$laying_date)
+cor.test(adegg$age, adegg$laying_date) # highly correlated ==> not in the same model!
+
+plot(adegg$age, adegg$arrival_mass3d)
+cor.test(adegg$age, adegg$arrival_mass3d) # slightly correlated
+
+
+
+#### MODELS WITH AGE ####
+
+## spotiness
+
+s1 = lmer(spotiness ~ age
+          + year
+          + egg_nr
+          #+ age:egg_nr removed after the wald test
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(s1) 
+
+# whole effect of age:egg_nr
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 6:7, H0=rep(0,2))
+#X2 = 3.5, df = 2, P(> X2) = 0.17 ==> NS = removed
+
+
+## H shell
+
+s1 = lmer(H_shell ~ age
+          + year
+          + egg_nr
+          + age:egg_nr
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg)
+summary(s1) 
+
+# whole effect of age:egg_nr
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 6:7, H0=rep(0,2))
+#X2 = 32.3, df = 2, P(> X2) = 9.6e-08 ===> significant
+
+
+#s shell 
+s1 = lmer(S_shell ~ age
+          + year
+          + egg_nr
+          + age:egg_nr
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg)
+summary(s1) 
+
+# whole effect of age:egg_nr
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 6:7, H0=rep(0,2))
+#X2 = 25.2, df = 2, P(> X2) = 3.4e-06
+
+#v shell 
+s1 = lmer(V_shell ~ age
+          + year
+          + egg_nr
+          #+ age:egg_nr
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg)
+summary(s1) 
+
+# whole effect of age:egg_nr
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 6:7, H0=rep(0,2))
+#X2 = 3.8, df = 2, P(> X2) = 0.15
+
+#H spot 
+s1 = lmer(H_spot ~ age
+          + year
+          + egg_nr
+          + age:egg_nr
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+          , control=lmerControl(optimizer = "bobyqa")
+)
+          summary(s1) 
+
+# whole effect of age:egg_nr
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 6:7, H0=rep(0,2))
+#X2 = 17.7, df = 2, P(> X2) = 0.00014
+
+#S spot 
+s1 = lmer(S_spot ~ age
+          + year
+          + egg_nr
+          + age:egg_nr
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(s1) 
+anova(s1)
+
+# whole effect of age:egg_nr
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 6:7, H0=rep(0,2))
+#X2 = 9.3, df = 2, P(> X2) = 0.0095
+
+#v spot 
+s1 = lmer(V_spot ~ age
+          + year
+          + egg_nr
+          #+ age:egg_nr
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+          )
+summary(s1) 
+
+# whole effect of age:egg_nr
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 6:7, H0=rep(0,2))
+#X2 = 0.95, df = 2, P(> X2) = 0.62
+
+#pointedness
+s1 = lmer(Pointedness ~ age
+          + year
+          + egg_nr
+          #+ age:egg_nr
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+)
+summary(s1) 
+
+# whole effect of age:egg_nr
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 6:7, H0=rep(0,2))
+#X2 = 1.0, df = 2, P(> X2) = 0.6
+
+#elongation
+s1 = lmer(Elongation ~ age
+          + year
+          + egg_nr
+          #+ age:egg_nr
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+)
+summary(s1) 
+
+# whole effect of age:egg_nr
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 6:7, H0=rep(0,2))
+#X2 = 1.1, df = 2, P(> X2) = 0.58
+
+#polar asymmetry
+s1 = lmer(PolarAsymmetry ~ age
+          + year
+          + egg_nr
+          #+ age:egg_nr
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+)
+summary(s1) 
+
+# whole effect of age:egg_nr
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 6:7, H0=rep(0,2))
+#X2 = 3.3, df = 2, P(> X2) = 0.19
+
+#contrast
+s1 = lmer(contrast ~ age
+          + year
+          + egg_nr
+          + age:egg_nr
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+)
+summary(s1) 
+
+# whole effect of age:egg_nr
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 6:7, H0=rep(0,2))
+#X2 = 6.2, df = 2, P(> X2) = 0.046
+
+#volume
+s1 = lmer(volume ~ age
+          + year
+          + egg_nr
+          #+ age:egg_nr
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+          , control = lmerControl(optimizer = "bobyqa")
+)
+summary(s1) 
+
+# whole effect of age:egg_nr
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 6:7, H0=rep(0,2))
+#X2 = 0.2, df = 2, P(> X2) = 0.91
+
+#age~egg_nr models. not used in the report but may use in the presentation
+sp=ggplot(data=adegg, aes(x=age, y=H_shell, group=egg_nr, col=H_shell, shape=egg_nr))+scale_fill_brewer(palette = "BrBG")+geom_point()+geom_smooth(method = "lm", se=F)+
+  aes(color=egg_nr)+theme_bw()+xlab("Age")+ylab("Shell Hue")
+sp+scale_color_grey(start=0.7, end=0.0)
+
+sp=ggplot(data=adegg, aes(x=age, y=S_shell, group=egg_nr, col=S_shell, shape=egg_nr))+scale_fill_brewer(palette = "BrBG")+geom_point()+geom_smooth(method = "lm", se=F)+
+  aes(color=egg_nr)+theme_bw()+xlab("Age")+ylab("Shell Saturation")
+sp+scale_color_grey(start=0.7, end=0.0)
+
+sp=ggplot(data=adegg, aes(x=age, y=S_spot, group=egg_nr, col=S_spot, shape=egg_nr))+scale_fill_brewer(palette = "BrBG")+geom_point()+geom_smooth(method = "lm", se=F)+
+  aes(color=egg_nr)+theme_bw()+xlab("Age")+ylab("Spot Saturation")
+sp+scale_color_grey(start=0.7, end=0.0)
+
+sp=ggplot(data=adegg, aes(x=age, y=H_spot, group=egg_nr, col=H_spot, shape=egg_nr))+scale_fill_brewer(palette = "BrBG")+geom_point()+geom_smooth(method = "lm", se=F)+
+  aes(color=egg_nr)+theme_bw()+xlab("Age")+ylab("Spot Hue")
+sp+scale_color_grey(start=0.7, end=0.0)
+
+sp=ggplot(data=adegg, aes(x=age, y=contrast, group=egg_nr, col=contrast, shape=egg_nr))+scale_fill_brewer(palette = "BrBG")+geom_point()+geom_smooth(method = "lm", se=F)+
+  aes(color=egg_nr)+theme_bw()+xlab("Age")+ylab("Contrast")
+sp+scale_color_grey(start=0.7, end=0.0)
+
+####laying order boxplots####
+
+adegg$egg_nr=as.factor(adegg$egg_nr)
+
+#spottiness
+ggplot(adegg, aes(x=egg_nr, y=spotiness))+
+  geom_boxplot()+geom_signif(comparisons = list(c("2", "3")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "2")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "3")), na.rm=T, map_signif_level = TRUE, y_position=0.65)+
+  theme_bw()+xlab("Laying Order")+ylab("Spottiness")+theme(axis.text = element_text(size=14), axis.title = element_text(size=14, face="bold"))+ggtitle(label="B")
+
+#H shell
+ggplot(adegg, aes(x=egg_nr, y=H_shell))+
+  geom_boxplot()+geom_signif(comparisons = list(c("2", "3")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "2")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "3")), na.rm=T, map_signif_level = TRUE, y_position=0.21)+
+  theme_bw()+xlab("Laying Order")+ylab("Shell Hue")+theme(axis.text = element_text(size=14), axis.title = element_text(size=14, face="bold"))+ggtitle(label="C")
+#not significant
+#h spot
+ggplot(adegg, aes(x=egg_nr, y=H_spot))+
+  geom_boxplot()+geom_signif(comparisons = list(c("2", "3")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "2")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "3")), na.rm=T, map_signif_level = TRUE, y_position=0.16)+
+  theme_bw()+xlab("Laying Order")+ylab("Spot Hue")+theme(axis.text = element_text(size=14), axis.title = element_text(size=14, face="bold"))+ggtitle(label="F")
+#s shell
+ggplot(adegg, aes(x=egg_nr, y=S_shell))+
+  geom_boxplot()+geom_signif(comparisons = list(c("2", "3")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "2")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "3")), na.rm=T, map_signif_level = TRUE, y_position=0.6)+
+  theme_bw()+xlab("Laying Order")+ylab("Shell Saturation")+theme(axis.text = element_text(size=14), axis.title = element_text(size=14, face="bold"))+ggtitle(label="D")
+#s spot
+ggplot(adegg, aes(x=egg_nr, y=S_spot))+
+  geom_boxplot()+geom_signif(comparisons = list(c("2", "3")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "2")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "3")), na.rm=T, map_signif_level = TRUE, y_position=0.5)+
+  theme_bw()+xlab("Laying Order")+ylab("Spot Saturation")+theme(axis.text = element_text(size=14), axis.title = element_text(size=14, face="bold"))+ggtitle(label="G")
+#v shell
+ggplot(adegg, aes(x=egg_nr, y=V_shell))+
+  geom_boxplot()+geom_signif(comparisons = list(c("2", "3")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "2")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "3")), na.rm=T, map_signif_level = TRUE, y_position=1.05)+
+  theme_bw()+xlab("Laying Order")+ylab("Shell Value")+theme(axis.text = element_text(size=14), axis.title = element_text(size=14, face="bold"))+ggtitle(label="E")
+#v spot
+ggplot(adegg, aes(x=egg_nr, y=V_spot))+
+  geom_boxplot()+geom_signif(comparisons = list(c("2", "3")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "2")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "3")), na.rm=T, map_signif_level = TRUE, y_position=1.05)+
+  theme_bw()+xlab("Laying Order")+ylab("Spot Value")+theme(axis.text = element_text(size=14), axis.title = element_text(size=14, face="bold"))+ggtitle(label="H")
+#pointedness
+ggplot(adegg, aes(x=egg_nr, y=Pointedness))+
+  geom_boxplot()+geom_signif(comparisons = list(c("2", "3")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "2")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "3")), na.rm=T, map_signif_level = TRUE, y_position=0.65)+
+  theme_bw()+xlab("Laying Order")+ylab("Pointedness")+theme(axis.text = element_text(size=14), axis.title = element_text(size=14, face="bold"))+ggtitle(label="J")
+#polar asymmetry
+ggplot(adegg, aes(x=egg_nr, y=PolarAsymmetry))+
+  geom_boxplot()+geom_signif(comparisons = list(c("2", "3")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "2")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "3")), na.rm=T, map_signif_level = TRUE, y_position=4.2)+
+  theme_bw()+xlab("Laying Order")+ylab("Polar Asymmetry")+theme(axis.text = element_text(size=14), axis.title = element_text(size=14, face="bold"))+ggtitle(label="L")
+#elongation
+ggplot(adegg, aes(x=egg_nr, y=Elongation))+
+  geom_boxplot()+geom_signif(comparisons = list(c("2", "3")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "2")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "3")), na.rm=T, map_signif_level = TRUE, y_position=1.7)+
+  theme_bw()+xlab("Laying Order")+ylab("Elongation")+theme(axis.text = element_text(size=14), axis.title = element_text(size=14, face="bold"))+ggtitle(label="K")
+#volume
+ggplot(adegg, aes(x=egg_nr, y=volume))+
+  geom_boxplot()+geom_signif(comparisons = list(c("2", "3")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "2")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "3")), na.rm=T, map_signif_level = TRUE, y_position=24)+
+  theme_bw()+xlab("Laying Order")+ylab("Volume")+theme(axis.text = element_text(size=14), axis.title = element_text(size=14, face="bold"))+ggtitle(label="A")
+#contrast
+ggplot(adegg, aes(x=egg_nr, y=contrast))+
+  geom_boxplot()+geom_signif(comparisons = list(c("2", "3")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "2")), na.rm=T, map_signif_level = TRUE)+
+  geom_signif(comparisons = list(c("1", "3")), na.rm=T, map_signif_level = TRUE, y_position=0.85)+
+  theme_bw()+xlab("Laying Order")+ylab("Contrast")+theme(axis.text = element_text(size=14), axis.title = element_text(size=14, face="bold"))+ggtitle(label="I")
+
+#### MODELS WITH AGE + ARRIVAL MASS ####
+
+## spotiness
+
+s1 = lmer(spotiness ~ age
+        + arrival_mass3d
+        + year
+        + egg_nr
+        #+ age:egg_nr
+        #+ age:arrival_mass3d
+        + (1|nest_id)
+        + (1|name)
+        , data=adegg
+        , control=lmerControl(optimizer = "bobyqa")
+        )
+summary(s1) 
+
+# whole effect of age:egg_nr
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 7:8, H0=rep(0,2))
+#X2 = 5.9, df = 2, P(> X2) = 0.053 ==> NS = removed
+
+# comparison egg_nr
+summary(glht(s1, linfct = mcp(egg_nr = "Tukey")))
+# no differences between eggs
+
+## H shell
+
+s1 = lmer(H_shell ~ age
+          + arrival_mass3d
+          + year
+          + egg_nr
+          + age:egg_nr
+          #+ age:arrival_mass3d
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg)
+summary(s1) 
+
+# age:egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 7:8, H0=rep(0,2))
+#X2 = 19.8, df = 2, P(> X2) = 4.9e-05
+
+# egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 5:6, H0=rep(0,2))
+#X2 = 11.2, df = 2, P(> X2) = 0.0037
+
+## S shell
+
+s1 = lmer(S_shell ~ age
+          + arrival_mass3d
+          + year
+          + egg_nr
+          + age:egg_nr
+          #+ age:arrival_mass3d
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg)
+summary(s1) 
+
+# age:egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 7:8, H0=rep(0,2))
+
+# egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 5:6, H0=rep(0,2))
+
+
+## V shell
+
+s1 = lmer(V_shell ~ age
+          + arrival_mass3d
+          + year
+          + egg_nr
+          #+ age:egg_nr
+          #+ age:arrival_mass3d
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+          , control=lmerControl(optimizer = "bobyqa")
+          )
+summary(s1) 
+
+# age:egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 7:8, H0=rep(0,2)) 
+#X2 = 6.0, df = 2, P(> X2) = 0.049
+# egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 5:6, H0=rep(0,2)) 
+#X2 = 3.7, df = 2, P(> X2) = 0.15
+
+
+## H spot
+
+s1 = lmer(H_spot ~ age
+          + arrival_mass3d
+          + year
+          + egg_nr
+          + age:egg_nr
+          + age:arrival_mass3d
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(s1) 
+
+# age:egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 7:8, H0=rep(0,2)) 
+# X2 = 10.5, df = 2, P(> X2) = 0.0052
+
+# egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 5:6, H0=rep(0,2)) 
+#X2 = 26.2, df = 2, P(> X2) = 2.1e-06
+
+#s spot
+s1 = lmer(S_spot ~ age
+          + arrival_mass3d
+          + year
+          + egg_nr
+          + age:egg_nr
+          #+ age:arrival_mass3d
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+          #, control=lmerControl(optimizer = "bobyqa")
+)
+summary(s1) 
+
+# age:egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 7:8, H0=rep(0,2)) 
+#X2 = 6.0, df = 2, P(> X2) = 0.05
+
+# egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 5:6, H0=rep(0,2)) 
+#X2 = 24.3, df = 2, P(> X2) = 5.2e-06
+
+#v spot
+s1 = lmer(V_spot ~ age
+          + arrival_mass3d
+          + year
+          + egg_nr
+          #+ age:egg_nr
+          #+ age:arrival_mass3d
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+          #, control=lmerControl(optimizer = "bobyqa")
+)
+summary(s1) 
+
+## contrast
+
+s1 = lmer(contrast ~ age
+          + arrival_mass3d
+          + year
+          + egg_nr
+          #+ age:egg_nr
+          #+ age:arrival_mass3d
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg)
+summary(s1) 
+
+
+## volume
+
+s1 = lmer(volume ~ age
+          + arrival_mass3d
+          + year
+          + egg_nr
+          #+ age:egg_nr
+          #+ age:arrival_mass3d
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg)
+summary(s1) 
+
+
+
+# egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 5:6, H0=rep(0,2)) 
+#X2 = 59.2, df = 2, P(> X2) = 1.4e-13
+
+## pointness
+
+s1 = lmer(Pointedness ~ age
+          + arrival_mass3d
+          + year
+          + egg_nr
+          #+ age:egg_nr
+          #+ age:arrival_mass3d
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+          , control=lmerControl(optimizer = "bobyqa")
+          )
+summary(s1) 
+
+# egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 5:6, H0=rep(0,2)) 
+#X2 = 66.5, df = 2, P(> X2) = 3.6e-15
+
+## elongation
+
+s1 = lmer(Elongation ~ age
+          + arrival_mass3d
+          + year
+          + egg_nr
+          #+ age:egg_nr
+          #+ age:arrival_mass3d
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg)
+summary(s1) 
+
+
+# egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 5:6, H0=rep(0,2)) 
+#X2 = 15.3, df = 2, P(> X2) = 0.00048
+
+
+
+## PolarAsymmetry
+
+s1 = lmer(PolarAsymmetry ~ age
+          + arrival_mass3d
+          + year
+          + egg_nr
+          #+ age:egg_nr
+          #+ age:arrival_mass3d
+          + (1|nest_id)
+          + (1|name)
+          , data=adegg
+          , control=lmerControl(optimizer = "bobyqa")
+          )
+summary(s1) 
+
+# egg
+wald.test(Sigma = vcov(s1), b=fixef(s1), Terms = 5:6, H0=rep(0,2)) 
+#X2 = 23.3, df = 2, P(> X2) = 8.6e-06
+
+#### ARRIVAL MASS PLOTS ####
+#spottiness~arrival mass plot
+hs=ggplot(data=adegg, aes(x=arrival_mass3d, y=spotiness))+geom_point()+geom_smooth(method = "lm", se=T)+
+  theme_bw()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+theme(axis.title = element_text(size=20))+
+  xlab("Arrival Mass")+ylab("Spottiness")+ggtitle(label="A")
+hs
+
+#v shell~arrival mass plot
+hs=ggplot(data=adegg, aes(x=arrival_mass3d, y=V_shell))+geom_point()+geom_smooth(method = "lm", se=T)+
+  theme_bw()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+theme(axis.title = element_text(size=20))+
+  theme(axis.title = element_text(size=20))+xlab("Arrival Mass")+ylab("Shell Value")+ggtitle(label="B")
+hs
+
+#h spot~arrival mass plot
+hs=ggplot(data=adegg, aes(x=arrival_mass3d, y=H_spot))+geom_point()+geom_smooth(method = "lm", se=T)+
+  theme_bw()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+theme(axis.title = element_text(size=20))+
+  theme(axis.title = element_text(size=20))+xlab("Arrival Mass")+ylab("Spot Hue")+ggtitle(label="C")
+hs
+
+#contrast~arrival mass plot
+hs=ggplot(data=adegg, aes(x=arrival_mass3d, y=contrast))+geom_point()+geom_smooth(method = "lm", se=T)+
+  theme_bw()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+theme(axis.title = element_text(size=20))+
+  theme(axis.title = element_text(size=20))+xlab("Arrival Mass")+ylab("Contrast")+ggtitle(label="D")
+hs
+
+
+
+# CHICK FITNESS ~ EGG PARAMETERS ------------------------------------------
+
+### chick file
+chick = read.table("chicks_info_1718.csv",h=T,sep=",") # N = 2511
+head(chick)
+summary(chick)
+
+### female file
+fem = read.table("adults_info_1718.csv",h=T,sep=",") # N = 2457
+head(fem)
+summary(fem)
+
+# only females
+fem=subset(fem, fem$sex=="2") # N = 1141
+summary(fem)
+
+# reduce data for female caracteristics
+names(fem)
+fem = fem[,c(3,7,8,10,11,12,13,14,15,16,17,18)]
+fem=unique(fem)
+
+#### merge female to chick
+i = merge(chick, fem, by=c("year", "nest"), all.x=T, all.y=T) # N = 3008
+head(i)
+
+# nest id 
+i$nest_id = as.factor(paste(i$nest, i$year, sep="_"))
+summary(i)
+
+### calculate the mean of the chick parameters (hatching rate , fledging rate, growth rate)
+# clutch size
+a = aggregate(x = i$clutch_size, by = list(i$nest_id), FUN = "mean") # N = 1356
+colnames(a)[1]="nest_id"
+colnames(a)[2]="mean_clutch_size"
+head(a)
+
+# brood size
+b = aggregate(x = i$max_brood_size.x, by = list(i$nest_id), FUN = "mean") # N = 1356
+colnames(b)[1]="nest_id"
+colnames(b)[2]="mean_brood_size"
+head(b)
+
+# nb fledglings
+c = aggregate(x = i$nb_fledging, by = list(i$nest_id), FUN = "mean") # N = 1356
+colnames(c)[1]="nest_id"
+colnames(c)[2]="mean_nb_fledging"
+head(c)
+
+# growth rate
+d = aggregate(x = i$growth_rate, by = list(i$nest_id), FUN = "mean") # N = 1356
+colnames(d)[1]="nest_id"
+colnames(d)[2]="mean_growth_rate"
+head(d)
+
+# hatching mass 
+dd = aggregate(x = i$mass_j1, by = list(i$nest_id), FUN = "mean") # N = 1356
+colnames(dd)[1]="nest_id"
+colnames(dd)[2]="mean_mass_j1"
+head(dd)
+
+# group these 4 tables
+mean_nest = merge(a,b, by="nest_id", all.x = T, all.y = T) # N = 1356
+mean_nest = merge(mean_nest,c, by="nest_id", all.x = T, all.y = T) # N = 1356
+mean_nest = merge(mean_nest,d, by="nest_id", all.x = T, all.y = T) # N = 1356
+mean_nest = merge(mean_nest,dd, by="nest_id", all.x = T, all.y = T) # N = 1356
+
+head(mean_nest)
+
+# add name, year and laying data
+names(i)
+f = i[,c(1,26,34,36)]
+f = unique(f) # n = 1721
+summary(f)
+
+mean_nest = merge(mean_nest, f, by="nest_id", all.x = T, all.y = F) # N = 1721
+summary(mean_nest)
+
+
+### calculate the mean of the egg parameters per nest
+head(egg)
+
+# spottiness
+sp = aggregate(x = egg$spotiness, by = list(egg$nest_id), FUN = "mean") # N = 403
+colnames(sp)[1]="nest_id"
+colnames(sp)[2]="mean_spotiness"
+head(sp)
+
+# H_shell
+hs = aggregate(x = egg$H_shell, by = list(egg$nest_id), FUN = "mean") # N = 403
+colnames(hs)[1]="nest_id"
+colnames(hs)[2]="mean_H_shell"
+head(hs)
+
+# H_spot
+hsp = aggregate(x = egg$H_spot, by = list(egg$nest_id), FUN = "mean") # N = 403
+colnames(hsp)[1]="nest_id"
+colnames(hsp)[2]="mean_H_spot"
+head(hsp)
+
+# S_shell
+ss = aggregate(x = egg$S_shell, by = list(egg$nest_id), FUN = "mean") # N = 403
+colnames(ss)[1]="nest_id"
+colnames(ss)[2]="mean_S_shell"
+head(ss)
+
+# S_spot
+ssp = aggregate(x = egg$S_spot, by = list(egg$nest_id), FUN = "mean") # N = 403
+colnames(ssp)[1]="nest_id"
+colnames(ssp)[2]="mean_S_spot"
+head(ssp)
+
+
+# V_shell
+vs = aggregate(x = egg$V_shell, by = list(egg$nest_id), FUN = "mean") # N = 403
+colnames(vs)[1]="nest_id"
+colnames(vs)[2]="mean_V_shell"
+head(vs)
+
+# V_spot
+vsp = aggregate(x = egg$V_spot, by = list(egg$nest_id), FUN = "mean") # N = 403
+colnames(vsp)[1]="nest_id"
+colnames(vsp)[2]="mean_V_spot"
+head(vsp)
+
+# contrast
+c = aggregate(x = egg$contrast, by = list(egg$nest_id), FUN = "mean") # N = 403
+colnames(c)[1]="nest_id"
+colnames(c)[2]="mean_contrast"
+head(c)
+
+# volume
+v = aggregate(x = egg$volume, by = list(egg$nest_id), FUN = "mean") # N = 403
+colnames(v)[1]="nest_id"
+colnames(v)[2]="mean_volume"
+head(v)
+
+# Pointedness
+p = aggregate(x = egg$Pointedness, by = list(egg$nest_id), FUN = "mean") # N = 403
+colnames(p)[1]="nest_id"
+colnames(p)[2]="mean_Pointedness"
+head(p)
+
+# Elongation
+e = aggregate(x = egg$Elongation, by = list(egg$nest_id), FUN = "mean") # N = 403
+colnames(e)[1]="nest_id"
+colnames(e)[2]="mean_Elongation"
+head(e)
+
+# PolarAsymmetry
+ps = aggregate(x = egg$PolarAsymmetry, by = list(egg$nest_id), FUN = "mean") # N = 403
+colnames(ps)[1]="nest_id"
+colnames(ps)[2]="mean_PolarAsymmetry"
+head(ps)
+
+
+# group these tables
+mean_egg = merge(sp,hs, by="nest_id", all.x = T, all.y = T) # N = 403
+mean_egg = merge(mean_egg, hsp, by="nest_id", all.x = T, all.y = T) # N = 403
+mean_egg = merge(mean_egg, ss, by="nest_id", all.x = T, all.y = T) # N = 403
+mean_egg = merge(mean_egg, ssp, by="nest_id", all.x = T, all.y = T) # N = 403
+mean_egg = merge(mean_egg, vs, by="nest_id", all.x = T, all.y = T) # N = 403
+mean_egg = merge(mean_egg, vsp, by="nest_id", all.x = T, all.y = T) # N = 403
+mean_egg = merge(mean_egg, c, by="nest_id", all.x = T, all.y = T) # N = 403
+mean_egg = merge(mean_egg, v, by="nest_id", all.x = T, all.y = T) # N = 403
+mean_egg = merge(mean_egg, p, by="nest_id", all.x = T, all.y = T) # N = 403
+mean_egg = merge(mean_egg, e, by="nest_id", all.x = T, all.y = T) # N = 403
+mean_egg = merge(mean_egg, ps, by="nest_id", all.x = T, all.y = T) # N = 403
+
+head(mean_egg)
+
+# merge egg_mean and nest_mean
+data = merge(mean_egg, mean_nest, by = "nest_id", all.x=T, all.y=F) # N = 403
+summary(data)
+
+# reduce the sample size to the known female id
+data = subset(data, is.na(data$name)==F) # N = 375
+summary(data)
+
+# clutch size and year as factor
+data$CS = as.factor(data$mean_clutch_size)
+data$year = as.factor(data$year)
+
+# distribution
+hist(data$mean_mass_j1)
+hist(data$mean_growth_rate)
+
+# standardization
+
+data$mean_spotiness_std <- (data$mean_spotiness - (mean(data$mean_spotiness, na.rm=T)))/(sqrt(var(data$mean_spotiness, na.rm=T)))
+data$mean_H_shell_std <- (data$mean_H_shell - (mean(data$mean_H_shell, na.rm=T)))/(sqrt(var(data$mean_H_shell, na.rm=T)))
+data$mean_H_spot_std <- (data$mean_H_spot - (mean(data$mean_H_spot, na.rm=T)))/(sqrt(var(data$mean_H_spot, na.rm=T)))
+data$mean_S_shell_std <- (data$mean_S_shell - (mean(data$mean_S_shell, na.rm=T)))/(sqrt(var(data$mean_S_shell, na.rm=T)))
+data$mean_S_spot_std <- (data$mean_S_spot - (mean(data$mean_S_spot, na.rm=T)))/(sqrt(var(data$mean_S_spot, na.rm=T)))
+data$mean_V_shell_std <- (data$mean_V_shell - (mean(data$mean_V_shell, na.rm=T)))/(sqrt(var(data$mean_V_shell, na.rm=T)))
+data$mean_V_spot_std <- (data$mean_V_spot - (mean(data$mean_V_spot, na.rm=T)))/(sqrt(var(data$mean_V_spot, na.rm=T)))
+data$mean_contrast_std <- (data$mean_contrast - (mean(data$mean_contrast, na.rm=T)))/(sqrt(var(data$mean_contrast, na.rm=T)))
+data$mean_volume_std <- (data$mean_volume - (mean(data$mean_volume, na.rm=T)))/(sqrt(var(data$mean_volume, na.rm=T)))
+data$mean_Elongation_std <- (data$mean_Elongation - (mean(data$mean_Elongation, na.rm=T)))/(sqrt(var(data$mean_Elongation, na.rm=T)))
+data$mean_Pointedness_std <- (data$mean_Pointedness - (mean(data$mean_Pointedness, na.rm=T)))/(sqrt(var(data$mean_Pointedness, na.rm=T)))
+data$mean_PolarAsymmetry_std <- (data$mean_PolarAsymmetry - (mean(data$mean_PolarAsymmetry, na.rm=T)))/(sqrt(var(data$mean_PolarAsymmetry, na.rm=T)))
+data$laying_date_std <- (data$laying_date - (mean(data$laying_date, na.rm=T)))/(sqrt(var(data$laying_date, na.rm=T)))
+
+
+
+
+
+#### hatching mass models #### 
+
+#non significant (p>0.05) interactions removed
+
+## spottiness
+m1 = lmer(mean_mass_j1 ~ mean_spotiness
+             + laying_date
+             + CS
+             + year
+             #+ mean_spotiness:laying_date
+             #+ mean_spotiness:CS
+             +(1|name)
+             , data=data
+             , control=lmerControl(optimizer = "bobyqa")
+             )
+summary(m1)
+
+
+## H_shell
+m1 = lmer(mean_mass_j1 ~ mean_H_shell
+          + laying_date
+          + CS
+          + year
+         # + mean_H_shell:laying_date
+          #+ mean_H_shell:CS
+          +(1|name)
+          , data=data
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+## S_shell
+m1 = lmer(mean_mass_j1 ~ mean_S_shell
+          + laying_date
+          + CS
+          + year
+          #+ mean_S_shell:laying_date
+          #+ mean_S_shell:CS
+          +(1|name)
+          , data=data
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+## V_shell
+m1 = lmer(mean_mass_j1 ~ mean_V_shell
+          + laying_date
+          + CS
+          + year
+          #+ mean_V_shell:laying_date
+          #+ mean_V_shell:CS
+          +(1|name)
+          , data=data
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+## H_spot
+m1 = lmer(mean_mass_j1 ~ mean_H_spot
+          + laying_date
+          + CS
+          + year
+          #+ mean_H_spot:laying_date
+          #+ mean_H_spot:CS
+          +(1|name)
+          , data=data
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+## S_spot
+m1 = lmer(mean_mass_j1 ~ mean_S_spot
+          + laying_date
+          + CS
+          + year
+          #+ mean_S_spot:laying_date
+          #+ mean_S_spot:CS
+          +(1|name)
+          , data=data
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+## v_spot
+m1 = lmer(mean_mass_j1 ~ mean_V_spot
+          + laying_date
+          + CS
+          + year
+          #+ mean_V_spot:laying_date
+          #+ mean_V_spot:CS
+          +(1|name)
+          , data=data
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+## volume
+m1 = lmer(mean_mass_j1 ~ mean_volume
+          + laying_date
+          + CS
+          + year
+          #+ mean_volume:laying_date
+          #+ mean_volume:CS
+          +(1|name)
+          , data=data
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+## elongation
+m1 = lmer(mean_mass_j1 ~ mean_Elongation
+          + laying_date
+          + CS
+          + year
+          #+ mean_Elongation:laying_date
+          #+ mean_Elongation:CS
+          +(1|name)
+          , data=data
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+## pointedness
+m1 = lmer(mean_mass_j1 ~ mean_Pointedness
+          + laying_date
+          + CS
+          + year
+          #+ mean_Pointedness:laying_date
+          #+ mean_Pointedness:CS
+          +(1|name)
+          , data=data
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+## polar asymmetry
+m1 = lmer(mean_mass_j1 ~ mean_PolarAsymmetry
+          + laying_date
+          + CS
+          + year
+          #+ mean_PolarAsymmetry:laying_date
+          #+ mean_PolarAsymmetry:CS
+          +(1|name)
+          , data=data
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+## contrast
+m1 = lmer(mean_mass_j1 ~ mean_contrast
+          + laying_date
+          + CS
+          + year
+          + mean_contrast:laying_date
+          #+ mean_contrast:CS
+          +(1|name)
+          , data=data
+          , control=lmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+#### hatching mass ~ volume plot ####
+hs=ggplot(data, aes(x=mean_volume, y=mean_mass_j1))+geom_point()+geom_smooth(method = "lm", se=T)+
+  theme_bw()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+theme(axis.title = element_text(size=20))+
+  theme(axis.title = element_text(size=20))+xlab("Volume")+ylab("Hatching Mass")+ggtitle(label="")+coord_cartesian(xlim = c(16,20.5))
+hs
+
+#### HATCHING RATE #####
+
+summary(data)
+
+# no. chicks per nest = mean_brood_size
+# no. non-hatched eggs = clutch size - brood size
+data$non_hatched = data$mean_clutch_size - data$mean_brood_size
+
+# as factor
+data$mean_clutch_size = as.factor(data$mean_clutch_size)
+data$non_hatched = as.factor(data$non_hatched)
+
+
+## spottiness
+m1 = glmer(cbind(mean_brood_size, non_hatched) ~ mean_spotiness_std
+          + laying_date_std
+          + CS
+          + year
+          #+ mean_spotiness:laying_date
+          #+ mean_spotiness:CS
+          + (1|name)
+          , family = binomial
+          , data=data
+          , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+m1 = glmer(cbind(mean_brood_size, non_hatched) ~ mean_H_shell_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_H_shell:laying_date
+           #+ mean_H_shell:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+m1 = glmer(cbind(mean_brood_size, non_hatched) ~ mean_S_shell_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_S_shell:laying_date
+           #+ mean_S_shell:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+m1 = glmer(cbind(mean_brood_size, non_hatched) ~ mean_V_shell_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_V_shell:laying_date
+           #+ mean_V_shell:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+m1 = glmer(cbind(mean_brood_size, non_hatched) ~ mean_H_spot_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_H_spot_std:laying_date_std
+           #+ mean_H_spot_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+m1 = glmer(cbind(mean_brood_size, non_hatched) ~ mean_S_spot_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_S_spot_std:laying_date_std
+           #+ mean_S_spot_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+m1 = glmer(cbind(mean_brood_size, non_hatched) ~ mean_V_spot_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_V_spot_std:laying_date_std
+           #+ mean_V_spot_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+m1 = glmer(cbind(mean_brood_size, non_hatched) ~ mean_volume_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_volume_std:laying_date_std
+           #+ mean_volume:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+ m1 = glmer(cbind(mean_brood_size, non_hatched) ~ mean_Pointedness_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_Pointedness_std:laying_date_std
+           #+ mean_Pointedness_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+m1 = glmer(cbind(mean_brood_size, non_hatched) ~ mean_PolarAsymmetry_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_PolarAsymmetry_std:laying_date_std
+           #+ mean_PolarAsymmetry_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+m1 = glmer(cbind(mean_brood_size, non_hatched) ~ mean_Elongation_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_Elongation_std:laying_date_std
+           #+ mean_Elongation_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+m1 = glmer(cbind(mean_brood_size, non_hatched) ~ mean_contrast_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_contrast_std:laying_date_std
+           #+ mean_contrast_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+#### volume + percentage hatched plot ####
+data$mean_brood_size=as.numeric(data$mean_brood_size)
+data$mean_clutch_size=as.numeric(data$mean_clutch_size)
+data$percenthatch=data$mean_brood_size/data$mean_clutch_size
+data$percenthatch=as.factor(data$percenthatch)
+data$percenthatch=revalue(data$percenthatch, c("0.333333333333333"="0.33", "0.666666666666667"="0.67"))
+boxplot(data$mean_volume~data$percenthatch, horizontal=T, xlab="Volume", ylab="percentage hatched", cex.lab=1.5)
+
+
+### FLEDGING  RATE ####
+
+summary(data)
+data$mean_nb_fledging=as.numeric(data$mean_nb_fledging)
+# no. of fledglings = mean_nb_fledging
+# no. of dead chicks = brood size - mean_nb_fledging
+data$dead = data$mean_brood_size - data$mean_nb_fledging
+data$percentfledge=data$mean_nb_fledging/data$mean_brood_size
+# as factor
+data$mean_nb_fledging = as.factor(data$mean_nb_fledging)
+data$dead = as.factor(data$dead)
+
+
+## spottiness
+m1 = glmer(cbind(mean_nb_fledging, dead) ~ mean_spotiness_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_spotiness:laying_date
+           #+ mean_spotiness:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+## H_shell
+m1 = glmer(cbind(mean_nb_fledging, dead) ~ mean_H_shell_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_H_shell_std:laying_date_std
+           #+ mean_H_shell_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+# s shell
+m1 = glmer(cbind(mean_nb_fledging, dead) ~ mean_S_shell_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_S_shell_std:laying_date_std
+           #+ mean_S_shell_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+#v shell 
+m1 = glmer(cbind(mean_nb_fledging, dead) ~ mean_V_shell_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_V_shell_std:laying_date_std
+           #+ mean_V_shell_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+#h spot
+m1 = glmer(cbind(mean_nb_fledging, dead) ~ mean_H_spot_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_H_spot_std:laying_date_std
+           #+ mean_H_spot_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+#S spot
+m1 = glmer(cbind(mean_nb_fledging, dead) ~ mean_S_spot_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_S_spot_std:laying_date_std
+           #+ mean_S_spot_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+
+#V spot
+m1 = glmer(cbind(mean_nb_fledging, dead) ~ mean_V_spot_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_V_spot_std:laying_date_std
+           #+ mean_V_spot_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+#Volume
+m1 = glmer(cbind(mean_nb_fledging, dead) ~ mean_volume#_std
+           + laying_date#_std
+           + CS
+           + year
+           #+ mean_volume_std:laying_date_std
+           #+ mean_volume_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+#pointedness
+m1 = glmer(cbind(mean_nb_fledging, dead) ~ mean_Pointedness_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_Pointedness_std:laying_date_std
+           #+ mean_Pointedness_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+#polarAsymmetry
+m1 = glmer(cbind(mean_nb_fledging, dead) ~ mean_PolarAsymmetry_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_PolarAsymmetry_std:laying_date_std
+           #+ mean_PolarAsymmetry_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+#elongation
+m1 = glmer(cbind(mean_nb_fledging, dead) ~ mean_Elongation_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_Elongation_std:laying_date_std
+           #+ mean_Elongation_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+#contrast
+m1 = glmer(cbind(mean_nb_fledging, dead) ~ mean_contrast_std
+           + laying_date_std
+           + CS
+           + year
+           #+ mean_contrast_std:laying_date_std
+           #+ mean_contrast_std:CS
+           + (1|name)
+           , family = binomial
+           , data=data
+           , control=glmerControl(optimizer = "bobyqa")
+)
+summary(m1)
+
+#### end ####
